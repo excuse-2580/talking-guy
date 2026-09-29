@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>会说话的小人</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{background:#fff;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+color:#1a1a2e;display:flex;flex-direction:column;align-items:center;padding:22px 16px 28px;overflow-x:hidden}
+
+h1{font-size:27px;font-weight:900;color:#2f6bf0;letter-spacing:2px;margin-bottom:2px;text-align:center}
+.sub{font-size:12px;color:#9aa;margin-bottom:16px;letter-spacing:1px}
+
+.stage{display:flex;align-items:flex-end;gap:14px;width:100%;max-width:520px;
+justify-content:center;flex-wrap:wrap}
+
+/* 小人 */
+.guy{flex:0 0 auto;position:relative}
+.guy svg{width:170px;height:230px;display:block;overflow:visible}
+.body-anim{transform-origin:100px 170px;animation:idle 2.6s ease-in-out infinite}
+@keyframes idle{0%,100%{transform:translateY(0) rotate(-1deg)}50%{transform:translateY(-4px) rotate(1.5deg)}}
+.talking .body-anim{animation:sway .5s ease-in-out infinite}
+@keyframes sway{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-3px) rotate(2.5deg)}}
+.talking .arm-l{animation:wave .42s ease-in-out infinite}
+.talking .arm-r{animation:wave .42s ease-in-out infinite reverse}
+@keyframes wave{0%,100%{transform:rotate(0)}50%{transform:rotate(-13deg)}}
+.arm-l,.arm-r{transform-origin:100px 112px}
+
+/* 气泡 */
+.bubble{position:absolute;left:100%;bottom:150px;margin-left:-6px;width:170px;
+background:#f0f6ff;border:2px solid #2f6bf0;border-radius:14px;padding:9px 11px;
+font-size:13px;line-height:1.5;color:#1a1a2e;opacity:0;transform:translateY(6px) scale(.9);
+transition:.25s;pointer-events:none;z-index:5;word-break:break-word}
+.bubble::before{content:"";position:absolute;left:-9px;bottom:16px;width:12px;height:12px;
+background:#f0f6ff;border-left:2px solid #2f6bf0;border-bottom:2px solid #2f6bf0;transform:rotate(45deg)}
+.bubble.on{opacity:1;transform:none}
+
+/* 右侧输入框（对应手绘里的圆角矩形） */
+.panel{flex:1 1 240px;min-width:220px;max-width:300px;background:#fff;
+border:3px solid #2f6bf0;border-radius:20px;padding:13px;display:flex;flex-direction:column;gap:9px}
+.panel .lbl{font-size:11px;color:#2f6bf0;font-weight:800;letter-spacing:1px}
+textarea{width:100%;height:88px;border:2px dashed #c3d8ff;border-radius:12px;padding:9px 10px;
+font-size:14px;line-height:1.5;resize:none;outline:none;color:#1a1a2e;font-family:inherit;background:#fbfcff}
+textarea:focus{border-color:#2f6bf0;background:#fff}
+
+.row{display:flex;gap:8px}
+button{border:none;border-radius:12px;height:46px;font-size:14px;font-weight:900;cursor:pointer;
+display:flex;align-items:center;justify-content:center;gap:5px;flex:1;transition:transform .08s}
+button:active{transform:scale(.95)}
+#say{background:#2f6bf0;color:#fff;box-shadow:0 4px 0 #1d4cc4}
+#say:active{box-shadow:0 1px 0 #1d4cc4}
+#mic{background:#fff;color:#2f6bf0;border:2px solid #2f6bf0;flex:0 0 62px;font-size:20px}
+#mic.on{background:#ef4444;color:#fff;border-color:#ef4444;animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.55}}
+#stop{background:#f0f0f4;color:#666;flex:0 0 62px;font-size:13px}
+
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px;max-width:520px;justify-content:center}
+.chip{border:2px solid #d6e4ff;background:#fff;color:#2f6bf0;border-radius:20px;
+padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer}
+.chip:active{background:#2f6bf0;color:#fff}
+
+.note{margin-top:16px;font-size:11px;color:#9aa;text-align:center;line-height:1.7;max-width:460px}
+.note b{color:#ef4444}
+</style>
+</head>
+<body>
+
+<h1>会说话的小人</h1>
+<div class="sub">打字或说话，他都替你讲出来</div>
+
+<div class="stage">
+  <div class="guy" id="guy">
+    <div class="bubble" id="bubble"></div>
+    <svg viewBox="0 0 200 250" stroke="#2f6bf0" fill="none"
+         stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <g class="body-anim">
+        <!-- 头 -->
+        <circle cx="100" cy="58" r="37"/>
+        <!-- 眼睛 -->
+        <circle cx="87" cy="52" r="3.6" fill="#2f6bf0" stroke="none"/>
+        <circle cx="113" cy="52" r="3.6" fill="#2f6bf0" stroke="none"/>
+        <!-- 嘴巴（说话时张合） -->
+        <ellipse id="mouth" cx="100" cy="72" rx="12" ry="4" fill="#2f6bf0" stroke="none"/>
+        <!-- 曲线身体 -->
+        <path d="M100 95 Q94 130 100 168"/>
+        <!-- 手臂 -->
+        <path class="arm-l" d="M100 112 Q72 122 64 102"/>
+        <path class="arm-r" d="M100 112 Q128 122 136 102"/>
+        <!-- 交叉腿 -->
+        <path d="M100 168 Q90 200 80 232"/>
+        <path d="M100 168 Q110 200 122 232"/>
+        <!-- 脚 -->
+        <path d="M72 232 L92 232"/>
+        <path d="M110 232 L130 232"/>
+      </g>
+    </svg>
+  </div>
+
+  <div class="panel">
+    <div class="lbl">说点什么</div>
+    <textarea id="txt" placeholder="在这里打字，或点 🎤 直接说…">你好呀，我是一个会说话的小人！</textarea>
+    <div class="row">
+      <button id="say">🔊 说出来</button>
+      <button id="mic" title="语音输入">🎤</button>
+    </div>
+    <div class="row">
+      <button id="stop">■ 闭嘴</button>
+    </div>
+  </div>
+</div>
+
+<div class="chips" id="chips"></div>
+
+<div class="note" id="note"></div>
+
+<script>
+var synth=window.speechSynthesis;
+var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+var guy=document.getElementById('guy'),bubble=document.getElementById('bubble'),
+    mouth=document.getElementById('mouth'),txt=document.getElementById('txt'),
+    micBtn=document.getElementById('mic'),note=document.getElementById('note');
+
+/* 能力检测提示 */
+var msgs=[];
+if(!synth)msgs.push('<b>语音合成不可用</b>：这个浏览器不支持朗读，文字仍会显示在气泡里');
+if(!SR)msgs.push('<b>语音识别不可用</b>：🎤 按钮不可用（部分浏览器仅在 https 下开放）');
+if(location.protocol==='file:')msgs.push('当前以本地文件打开，🎤 麦克风可能被浏览器拦截，建议用 https 访问');
+note.innerHTML=msgs.length?msgs.join('<br>'):'支持朗读与语音输入 · 全程在本地完成，不会上传任何内容';
+
+/* 中文音色 */
+var zhVoice=null;
+function pickVoice(){
+  if(!synth)return null;
+  var vs=synth.getVoices()||[];
+  var zh=vs.filter(function(v){return /^zh|Chinese|中文/i.test(v.lang+' '+v.name)});
+  zhVoice=zh[0]||null;
+  return zhVoice;
+}
+if(synth){pickVoice();synth.onvoiceschanged=pickVoice;}
+
+/* 说话动画 */
+var talking=false;
+function animLoop(){
+  if(talking){
+    mouth.setAttribute('ry',(3+Math.random()*8).toFixed(1));
+    mouth.setAttribute('rx',(10+Math.random()*5).toFixed(1));
+  }else{
+    mouth.setAttribute('ry',4);mouth.setAttribute('rx',12);
+  }
+  requestAnimationFrame(animLoop);
+}
+animLoop();
+
+function startTalk(t){
+  talking=true;guy.classList.add('talking');
+  bubble.textContent=t;bubble.classList.add('on');
+}
+function stopTalk(){
+  talking=false;guy.classList.remove('talking');
+  setTimeout(function(){if(!talking)bubble.classList.remove('on')},700);
+}
+
+/* 朗读 */
+function speak(text){
+  text=(text||'').trim();
+  if(!text){txt.focus();return;}
+  if(!synth){startTalk(text);setTimeout(stopTalk,1800);return;}
+  synth.cancel();
+  var u=new SpeechSynthesisUtterance(text);
+  var v=pickVoice();
+  if(v)u.voice=v;
+  u.lang='zh-CN';u.rate=1;u.pitch=1.05;u.volume=1;
+  u.onstart=function(){startTalk(text)};
+  u.onend=stopTalk;u.onerror=stopTalk;
+  synth.speak(u);
+  startTalk(text);           // 有些浏览器 onstart 不触发，双保险
+}
+
+document.getElementById('say').onclick=function(){speak(txt.value)};
+document.getElementById('stop').onclick=function(){
+  if(synth)synth.cancel();
+  stopTalk();
+};
+txt.addEventListener('keydown',function(e){
+  if(e.key==='Enter'&&(e.metaKey||e.ctrlKey)){e.preventDefault();speak(txt.value)}
+});
+
+/* 语音识别 */
+var rec=null,recOn=false;
+if(SR){
+  rec=new SR();
+  rec.lang='zh-CN';rec.interimResults=true;rec.continuous=false;
+  rec.onstart=function(){recOn=true;micBtn.classList.add('on');bubble.textContent='在听…';bubble.classList.add('on')};
+  rec.onresult=function(e){
+    var s='';
+    for(var i=e.resultIndex;i<e.results.length;i++)s+=e.results[i][0].transcript;
+    txt.value=s;
+    bubble.textContent=s;
+  };
+  rec.onerror=function(ev){
+    recOn=false;micBtn.classList.remove('on');
+    bubble.textContent=ev.error==='not-allowed'?'麦克风被拒绝':'听不清，再试一次';
+    setTimeout(function(){if(!talking)bubble.classList.remove('on')},1600);
+  };
+  rec.onend=function(){
+    recOn=false;micBtn.classList.remove('on');
+    bubble.classList.remove('on');
+  };
+}
+micBtn.onclick=function(){
+  if(!SR){bubble.textContent='这个浏览器不支持语音识别';bubble.classList.add('on');return;}
+  if(recOn){rec.stop();return;}
+  try{rec.start()}catch(e){}
+};
+
+/* 快捷短语 */
+var PHRASES=['你好呀！','今天天气不错','给我讲个笑话','你真棒','我有点困了','一起玩吧'];
+var chips=document.getElementById('chips');
+PHRASES.forEach(function(s){
+  var b=document.createElement('button');b.className='chip';b.textContent=s;
+  b.onclick=function(){txt.value=s;speak(s)};
+  chips.appendChild(b);
+});
+
+/* 点小人也能说话 */
+guy.addEventListener('click',function(){speak(txt.value)});
+</script>
+</body>
+</html>
