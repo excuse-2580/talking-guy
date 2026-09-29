@@ -127,7 +127,9 @@ var msgs=[];
 if(!synth)msgs.push('<b>语音合成不可用</b>：这个浏览器不支持朗读，文字仍会显示在气泡里');
 if(!SR)msgs.push('<b>语音识别不可用</b>：🎤 按钮不可用（部分浏览器仅在 https 下开放）');
 if(location.protocol==='file:')msgs.push('当前以本地文件打开，🎤 麦克风可能被浏览器拦截，建议用 https 访问');
-note.innerHTML=msgs.length?msgs.join('<br>'):'支持朗读与语音输入 · 全程在本地完成，不会上传任何内容';
+if(!msgs.length)msgs.push('点 🎤 说话，他会自动把你说的念出来 · 朗读在<b>本地</b>完成');
+if(SR)msgs.push('<b>注意</b>：语音识别由浏览器实现，Chrome / Edge 会把音频发到云端识别，网页无法阻止');
+note.innerHTML=msgs.join('<br>');
 
 /* 中文音色 */
 var zhVoice=null;
@@ -178,6 +180,13 @@ function speak(text){
   startTalk(text);           // 有些浏览器 onstart 不触发，双保险
 }
 
+/* 语音识别结果 → 自动朗读（说完整句才念，避免边说边读） */
+var autoTimer=null;
+function autoSpeak(text){
+  clearTimeout(autoTimer);
+  autoTimer=setTimeout(function(){speak(text)},420);
+}
+
 document.getElementById('say').onclick=function(){speak(txt.value)};
 document.getElementById('stop').onclick=function(){
   if(synth)synth.cancel();
@@ -198,6 +207,9 @@ if(SR){
     for(var i=e.resultIndex;i<e.results.length;i++)s+=e.results[i][0].transcript;
     txt.value=s;
     bubble.textContent=s;
+    /* 最终结果：识别完自动念出来，形成闭环 */
+    var final=(e.results[e.results.length-1]||{}).isFinal!==false;
+    if(final&&s.trim()){autoSpeak(s);}
   };
   rec.onerror=function(ev){
     recOn=false;micBtn.classList.remove('on');
